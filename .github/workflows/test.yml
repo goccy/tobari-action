@@ -57,3 +57,72 @@ jobs:
             echo "::error::GOFLAGS does not contain --embed-code"
             exit 1
           fi
+
+  test-report:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - uses: ./setup
+      - name: Create test Go project
+        run: |
+          mkdir -p "${RUNNER_TEMP}/testproject"
+          cd "${RUNNER_TEMP}/testproject"
+          go mod init testproject
+          cat > main.go << 'GOEOF'
+          package main
+
+          func Add(a, b int) int {
+            return a + b
+          }
+
+          func main() {}
+          GOEOF
+          cat > main_test.go << 'GOEOF'
+          package main
+
+          import "testing"
+
+          func TestAdd(t *testing.T) {
+            if Add(1, 2) != 3 {
+              t.Fatal("unexpected result")
+            }
+          }
+          GOEOF
+      - name: Run tests with tobari instrumentation
+        working-directory: ${{ runner.temp }}/testproject
+        run: go test -v ./...
+      - uses: ./report
+        with:
+          tobari-json: ${{ runner.temp }}/testproject/tobari/tobari.json
+          name: tobari-report-${{ matrix.os }}
+
+  test-report-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create dummy inputs
+        run: |
+          touch "${RUNNER_TEMP}/dummy.json"
+          touch "${RUNNER_TEMP}/dummy.tar.gz"
+          touch "${RUNNER_TEMP}/dummy-binary"
+      - name: Test both source and binary fails
+        id: both-inputs
+        uses: ./report
+        continue-on-error: true
+        with:
+          tobari-json: ${{ runner.temp }}/dummy.json
+          source: ${{ runner.temp }}/dummy.tar.gz
+          binary: ${{ runner.temp }}/dummy-binary
+      - name: Verify failure
+        run: |
+          if [ "${{ steps.both-inputs.outcome }}" != "failure" ]; then
+            echo "::error::Expected failure when both source and binary are specified"
+            exit 1
+          fi
+          echo "Validation correctly rejected mutually exclusive inputs"
