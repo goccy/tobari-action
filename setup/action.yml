@@ -1,0 +1,60 @@
+name: 'Setup tobari'
+description: 'Install tobari and configure GOFLAGS for scoped coverage measurement'
+inputs:
+  version:
+    description: 'Version of tobari to install (e.g. "v0.9.0" or "latest")'
+    required: false
+    default: 'latest'
+  embed-code:
+    description: 'Embed source code into the instrumented binary'
+    required: false
+    default: 'false'
+runs:
+  using: 'composite'
+  steps:
+    - name: Determine version
+      id: version
+      shell: bash
+      run: |
+        if [ "${{ inputs.version }}" = "latest" ]; then
+          VERSION=$(gh release view --repo goccy/tobari --json tagName --jq '.tagName')
+        else
+          VERSION="${{ inputs.version }}"
+        fi
+        echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+      env:
+        GH_TOKEN: ${{ github.token }}
+
+    - name: Install tobari
+      shell: bash
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+        ARCH=$(uname -m)
+        case "${ARCH}" in
+          x86_64) ARCH="amd64" ;;
+          aarch64) ARCH="arm64" ;;
+        esac
+
+        URL="https://github.com/goccy/tobari/releases/download/${VERSION}/tobari_${VERSION}_${OS}_${ARCH}.tar.gz"
+        INSTALL_DIR="${HOME}/.tobari/bin"
+        mkdir -p "${INSTALL_DIR}"
+
+        curl -sL "${URL}" | tar xz -C "${INSTALL_DIR}" tobari
+        chmod +x "${INSTALL_DIR}/tobari"
+        echo "${INSTALL_DIR}" >> "$GITHUB_PATH"
+
+    - name: Configure GOFLAGS
+      shell: bash
+      run: |
+        if [ "${{ inputs.embed-code }}" = "true" ]; then
+          TOBARI_FLAGS=$(tobari flags -E)
+        else
+          TOBARI_FLAGS=$(tobari flags)
+        fi
+
+        if [ -n "${GOFLAGS:-}" ]; then
+          echo "GOFLAGS=${GOFLAGS} ${TOBARI_FLAGS}" >> "$GITHUB_ENV"
+        else
+          echo "GOFLAGS=${TOBARI_FLAGS}" >> "$GITHUB_ENV"
+        fi
