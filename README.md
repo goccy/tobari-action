@@ -36,7 +36,7 @@ With embed-code enabled:
 ```yaml
       - uses: goccy/tobari-action/setup@v1
         with:
-          embed-code: 'true'
+          embed-code: true
       - run: go build -o myapp .
         # The built binary will have source code embedded
 ```
