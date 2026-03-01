@@ -1,0 +1,59 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-setup:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - uses: ./setup
+      - name: Verify GOFLAGS
+        run: |
+          echo "GOFLAGS=${GOFLAGS}"
+          if [ -z "${GOFLAGS}" ]; then
+            echo "::error::GOFLAGS is not set"
+            exit 1
+          fi
+          if [[ "${GOFLAGS}" != *"-cover"* ]]; then
+            echo "::error::GOFLAGS does not contain -cover"
+            exit 1
+          fi
+          if [[ "${GOFLAGS}" != *"-toolexec="* ]]; then
+            echo "::error::GOFLAGS does not contain -toolexec"
+            exit 1
+          fi
+
+  test-setup-embed-code:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - uses: ./setup
+        with:
+          embed-code: 'true'
+      - name: Verify GOFLAGS with embed-code
+        run: |
+          echo "GOFLAGS=${GOFLAGS}"
+          if [[ "${GOFLAGS}" != *"-cover"* ]]; then
+            echo "::error::GOFLAGS does not contain -cover"
+            exit 1
+          fi
+          if [[ "${GOFLAGS}" != *"--embed-code"* ]]; then
+            echo "::error::GOFLAGS does not contain --embed-code"
+            exit 1
+          fi
