@@ -1,0 +1,146 @@
+name: 'Report tobari coverage'
+description: 'Generate an HTML coverage report from tobari.json and upload it as an artifact'
+inputs:
+  tobari-json:
+    description: 'Path to tobari.json file(s). Multiple paths can be specified with newlines.'
+    required: false
+    default: 'tobari/tobari.json'
+  source:
+    description: 'Path to source.tar.gz file(s) for source resolution. Multiple paths can be specified with newlines.'
+    required: false
+    default: ''
+  binary:
+    description: 'Path to binary with embedded source code'
+    required: false
+    default: ''
+  name:
+    description: 'Artifact name for the HTML report'
+    required: false
+    default: 'tobari-report'
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate inputs
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.source }}" ] && [ -n "${{ inputs.binary }}" ]; then
+          echo "::error::Cannot specify both 'source' and 'binary' inputs. They are mutually exclusive."
+          exit 1
+        fi
+
+        while IFS= read -r file; do
+          file=$(echo "${file}" | xargs)
+          if [ -z "${file}" ]; then
+            continue
+          fi
+          if [ ! -f "${file}" ]; then
+            echo "::error::tobari-json file not found: ${file}"
+            exit 1
+          fi
+        done <<< "${{ inputs.tobari-json }}"
+
+        if [ -n "${{ inputs.source }}" ]; then
+          while IFS= read -r file; do
+            file=$(echo "${file}" | xargs)
+            if [ -z "${file}" ]; then
+              continue
+            fi
+            if [ ! -f "${file}" ]; then
+              echo "::error::source file not found: ${file}"
+              exit 1
+            fi
+          done <<< "${{ inputs.source }}"
+        fi
+
+        if [ -n "${{ inputs.binary }}" ] && [ ! -f "${{ inputs.binary }}" ]; then
+          echo "::error::binary file not found: ${{ inputs.binary }}"
+          exit 1
+        fi
+
+    - name: Prepare tobari.json
+      id: json
+      shell: bash
+      run: |
+        WORK_DIR="${RUNNER_TEMP}/tobari-report"
+        mkdir -p "${WORK_DIR}"
+
+        JSON_FILES=()
+        while IFS= read -r file; do
+          file=$(echo "${file}" | xargs)
+          if [ -n "${file}" ]; then
+            JSON_FILES+=("${file}")
+          fi
+        done <<< "${{ inputs.tobari-json }}"
+
+        if [ "${#JSON_FILES[@]}" -eq 1 ]; then
+          echo "path=${JSON_FILES[0]}" >> "$GITHUB_OUTPUT"
+        else
+          MERGED="${WORK_DIR}/merged.json"
+          tobari merge json -o "${MERGED}" "${JSON_FILES[@]}"
+          echo "path=${MERGED}" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Prepare source
+      id: source
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.source }}" ]; then
+          echo "path=" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        WORK_DIR="${RUNNER_TEMP}/tobari-report"
+        mkdir -p "${WORK_DIR}"
+
+        SOURCE_FILES=()
+        while IFS= read -r file; do
+          file=$(echo "${file}" | xargs)
+          if [ -n "${file}" ]; then
+            SOURCE_FILES+=("${file}")
+          fi
+        done <<< "${{ inputs.source }}"
+
+        if [ "${#SOURCE_FILES[@]}" -eq 1 ]; then
+          echo "path=${SOURCE_FILES[0]}" >> "$GITHUB_OUTPUT"
+        else
+          MERGED="${WORK_DIR}/merged.tar.gz"
+          tobari merge source -o "${MERGED}" "${SOURCE_FILES[@]}"
+          echo "path=${MERGED}" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Generate HTML report
+      id: html
+      shell: bash
+      run: |
+        WORK_DIR="${RUNNER_TEMP}/tobari-report"
+        mkdir -p "${WORK_DIR}"
+        OUTPUT_FILE="${WORK_DIR}/${{ inputs.name }}.html"
+
+        ARGS=(-o "${OUTPUT_FILE}")
+
+        if [ -n "${{ steps.source.outputs.path }}" ]; then
+          ARGS+=(-s "${{ steps.source.outputs.path }}")
+        fi
+
+        if [ -n "${{ inputs.binary }}" ]; then
+          ARGS+=(-b "${{ inputs.binary }}")
+        fi
+
+        tobari html "${ARGS[@]}" "${{ steps.json.outputs.path }}"
+
+        echo "path=${OUTPUT_FILE}" >> "$GITHUB_OUTPUT"
+
+    - name: Upload HTML report
+      id: upload
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ steps.html.outputs.path }}
+        archive: false
+
+    - name: Add report link to job summary
+      shell: bash
+      run: |
+        echo "### Tobari Coverage Report" >> "$GITHUB_STEP_SUMMARY"
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        echo "[View Report](${{ steps.upload.outputs.artifact-url }})" >> "$GITHUB_STEP_SUMMARY"
