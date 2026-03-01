@@ -1,0 +1,42 @@
+name: release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  update-tags:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update major and minor version tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+
+          if [[ ! "${TAG}" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "::error::Tag '${TAG}' does not match semver format vMAJOR.MINOR.PATCH"
+            exit 1
+          fi
+
+          MAJOR="${BASH_REMATCH[1]}"
+          MINOR="${BASH_REMATCH[2]}"
+
+          MAJOR_TAG="v${MAJOR}"
+          MINOR_TAG="v${MAJOR}.${MINOR}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git tag -fa "${MAJOR_TAG}" -m "Update ${MAJOR_TAG} to ${TAG}"
+          git tag -fa "${MINOR_TAG}" -m "Update ${MINOR_TAG} to ${TAG}"
+
+          git push origin "${MAJOR_TAG}" --force
+          git push origin "${MINOR_TAG}" --force
+
+          echo "Updated ${MAJOR_TAG} and ${MINOR_TAG} to point to ${TAG}"
