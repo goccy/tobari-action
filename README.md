@@ -14,6 +14,7 @@ Installs the tobari CLI and configures `GOFLAGS` for coverage-instrumented build
 |------|-------------|---------|
 | `version` | Version of tobari to install (e.g., `v0.9.0` or `latest`) | `latest` |
 | `embed-code` | Embed source code into instrumented binaries | `false` |
+| `tags` | Build tags (same as `go build -tags`). Multiple tags can be specified with newlines or commas. | |
 
 #### Usage
 
@@ -29,6 +30,16 @@ jobs:
       - uses: goccy/tobari-action/setup@v1
       - run: go build ./...
         # GOFLAGS is automatically set, so go build runs with coverage instrumentation
+```
+
+With build tags:
+
+```yaml
+      - uses: goccy/tobari-action/setup@v1
+        with:
+          tags: |
+            timetzdata
+            netgo
 ```
 
 With embed-code enabled:

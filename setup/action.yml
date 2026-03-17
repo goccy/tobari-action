@@ -9,6 +9,10 @@ inputs:
     description: 'Embed source code into the instrumented binary'
     required: false
     default: 'false'
+  tags:
+    description: 'Build tags (same as go build -tags). Multiple tags can be specified with newlines or commas.'
+    required: false
+    default: ''
 runs:
   using: 'composite'
   steps:
@@ -47,11 +51,20 @@ runs:
     - name: Configure GOFLAGS
       shell: bash
       run: |
+        FLAGS_ARGS=""
+
         if [ "${{ inputs.embed-code }}" = "true" ]; then
-          TOBARI_FLAGS=$(tobari flags -E)
-        else
-          TOBARI_FLAGS=$(tobari flags)
+          FLAGS_ARGS="${FLAGS_ARGS} -E"
         fi
+
+        TAGS_INPUT="${{ inputs.tags }}"
+        if [ -n "${TAGS_INPUT}" ]; then
+          # Convert newline-separated tags to comma-separated, preserving existing commas
+          TAGS=$(echo "${TAGS_INPUT}" | tr '\n' ',' | sed 's/,\+/,/g' | sed 's/^,//;s/,$//')
+          FLAGS_ARGS="${FLAGS_ARGS} -tags=${TAGS}"
+        fi
+
+        TOBARI_FLAGS=$(tobari flags ${FLAGS_ARGS})
 
         if [ -n "${GOFLAGS:-}" ]; then
           echo "GOFLAGS=${GOFLAGS} ${TOBARI_FLAGS}" >> "$GITHUB_ENV"

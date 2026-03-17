@@ -58,6 +58,33 @@ jobs:
             exit 1
           fi
 
+  test-setup-tags:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - uses: ./setup
+        with:
+          tags: |
+            tag1
+            tag2
+      - name: Verify GOFLAGS with tags
+        run: |
+          echo "GOFLAGS=${GOFLAGS}"
+          if [[ "${GOFLAGS}" != *"-cover"* ]]; then
+            echo "::error::GOFLAGS does not contain -cover"
+            exit 1
+          fi
+          if [[ "${GOFLAGS}" != *"-tags=tag1,tag2"* ]]; then
+            echo "::error::GOFLAGS does not contain -tags=tag1,tag2"
+            exit 1
+          fi
+
   test-report:
     strategy:
       matrix:
