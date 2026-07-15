@@ -85,6 +85,33 @@ jobs:
             exit 1
           fi
 
+  test-setup-exclude-analysis:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - uses: ./setup
+        with:
+          exclude-analysis: |
+            github.com/org/repo
+            github.com/org/other/pb
+      - name: Verify GOFLAGS with exclude-analysis
+        run: |
+          echo "GOFLAGS=${GOFLAGS}"
+          if [[ "${GOFLAGS}" != *"-cover"* ]]; then
+            echo "::error::GOFLAGS does not contain -cover"
+            exit 1
+          fi
+          if [[ "${GOFLAGS}" != *"--exclude-analysis=github.com/org/repo,github.com/org/other/pb"* ]]; then
+            echo "::error::GOFLAGS does not contain --exclude-analysis=github.com/org/repo,github.com/org/other/pb"
+            exit 1
+          fi
+
   test-report:
     strategy:
       matrix:

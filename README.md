@@ -15,6 +15,7 @@ Installs the tobari CLI and configures `GOFLAGS` for coverage-instrumented build
 | `version` | Version of tobari to install (e.g., `v0.9.0` or `latest`) | `latest` |
 | `embed-code` | Embed source code into instrumented binaries | `false` |
 | `tags` | Build tags (same as `go build -tags`). Multiple tags can be specified with newlines or commas. | |
+| `exclude-analysis` | Package path prefixes to exclude from the dependency analysis. Multiple prefixes can be specified with newlines or commas. | |
 
 #### Usage
 
@@ -41,6 +42,22 @@ With build tags:
             timetzdata
             netgo
 ```
+
+With packages excluded from the dependency analysis (useful when the dependency
+closure contains a large amount of generated code, e.g. gRPC/protobuf clients,
+that slows down the analysis):
+
+```yaml
+      - uses: goccy/tobari-action/setup@v1
+        with:
+          exclude-analysis: |
+            github.com/org/repo
+            github.com/org/other/pb
+```
+
+> **Note:** Only exclude packages that never call back into a coverage-target
+> package. Coverage targets and the main package are never excluded, even if a
+> prefix matches them.
 
 With embed-code enabled:
 

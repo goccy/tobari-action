@@ -13,6 +13,10 @@ inputs:
     description: 'Build tags (same as go build -tags). Multiple tags can be specified with newlines or commas.'
     required: false
     default: ''
+  exclude-analysis:
+    description: 'Package path prefixes to exclude from the dependency analysis. Multiple prefixes can be specified with newlines or commas.'
+    required: false
+    default: ''
 runs:
   using: 'composite'
   steps:
@@ -62,6 +66,13 @@ runs:
           # Convert newline-separated tags to comma-separated, preserving existing commas
           TAGS=$(echo "${TAGS_INPUT}" | tr '\n' ',' | sed 's/,\+/,/g' | sed 's/^,//;s/,$//')
           FLAGS_ARGS="${FLAGS_ARGS} -tags=${TAGS}"
+        fi
+
+        EXCLUDE_ANALYSIS_INPUT="${{ inputs.exclude-analysis }}"
+        if [ -n "${EXCLUDE_ANALYSIS_INPUT}" ]; then
+          # Convert newline-separated prefixes to comma-separated, preserving existing commas
+          EXCLUDE_ANALYSIS=$(echo "${EXCLUDE_ANALYSIS_INPUT}" | tr '\n' ',' | sed 's/,\+/,/g' | sed 's/^,//;s/,$//')
+          FLAGS_ARGS="${FLAGS_ARGS} -exclude-analysis=${EXCLUDE_ANALYSIS}"
         fi
 
         TOBARI_FLAGS=$(tobari flags ${FLAGS_ARGS})
