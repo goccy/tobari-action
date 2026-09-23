@@ -12,10 +12,10 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.24'
+          go-version: '1.26'
       - uses: ./setup
       - name: Verify GOFLAGS
         run: |
@@ -39,10 +39,10 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.24'
+          go-version: '1.26'
       - uses: ./setup
         with:
           embed-code: 'true'
@@ -64,10 +64,10 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.24'
+          go-version: '1.26'
       - uses: ./setup
         with:
           tags: |
@@ -91,10 +91,10 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.24'
+          go-version: '1.26'
       - uses: ./setup
         with:
           exclude-analysis: |
@@ -112,16 +112,63 @@ jobs:
             exit 1
           fi
 
+  test-setup-passed-blocks-only:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26'
+      - uses: ./setup
+        with:
+          passed-blocks-only: 'true'
+      - name: Verify GOFLAGS with passed-blocks-only
+        run: |
+          echo "GOFLAGS=${GOFLAGS}"
+          if [[ "${GOFLAGS}" != *"-cover"* ]]; then
+            echo "::error::GOFLAGS does not contain -cover"
+            exit 1
+          fi
+          if [[ "${GOFLAGS}" != *"--passed-blocks-only"* ]]; then
+            echo "::error::GOFLAGS does not contain --passed-blocks-only"
+            exit 1
+          fi
+
+  test-setup-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26'
+      - name: Test both passed-blocks-only and exclude-analysis fails
+        id: both-inputs
+        uses: ./setup
+        continue-on-error: true
+        with:
+          passed-blocks-only: 'true'
+          exclude-analysis: github.com/org/repo
+      - name: Verify failure
+        run: |
+          if [ "${{ steps.both-inputs.outcome }}" != "failure" ]; then
+            echo "::error::Expected failure when both passed-blocks-only and exclude-analysis are specified"
+            exit 1
+          fi
+          echo "Validation correctly rejected mutually exclusive inputs"
+
   test-report:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.24'
+          go-version: '1.26'
       - uses: ./setup
       - name: Create test Go project
         run: |
@@ -159,7 +206,7 @@ jobs:
   test-report-validation:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Create dummy inputs
         run: |
           touch "${RUNNER_TEMP}/dummy.json"

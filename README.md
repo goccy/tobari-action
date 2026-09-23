@@ -8,6 +8,12 @@ GitHub Action for [tobari](https://github.com/goccy/tobari) - a scoped coverage 
 
 Installs the tobari CLI and configures `GOFLAGS` for coverage-instrumented builds.
 
+> **Note:** The Go toolchain used for the build must satisfy the `go` directive
+> of the installed tobari release, because tobari compiles its runtime package
+> with the same toolchain as your project. tobari v0.13.0 and later require Go
+> 1.26 or later; v0.12.x requires Go 1.24 or later. Pin `version` if you need
+> to stay on an older Go release.
+
 #### Inputs
 
 | Name | Description | Default |
@@ -16,6 +22,9 @@ Installs the tobari CLI and configures `GOFLAGS` for coverage-instrumented build
 | `embed-code` | Embed source code into instrumented binaries | `false` |
 | `tags` | Build tags (same as `go build -tags`). Multiple tags can be specified with newlines or commas. | |
 | `exclude-analysis` | Package path prefixes to exclude from the dependency analysis. Multiple prefixes can be specified with newlines or commas. | |
+| `passed-blocks-only` | Record only the blocks that were actually passed and skip the dependency analysis (tobari v0.13.0 or later) | `false` |
+
+> **Note:** `exclude-analysis` and `passed-blocks-only` are mutually exclusive. Specify at most one.
 
 #### Usage
 
@@ -24,10 +33,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.24'
+          go-version: '1.26'
       - uses: goccy/tobari-action/setup@v1
       - run: go build ./...
         # GOFLAGS is automatically set, so go build runs with coverage instrumentation
@@ -58,6 +67,23 @@ that slows down the analysis):
 > **Note:** Only exclude packages that never call back into a coverage-target
 > package. Coverage targets and the main package are never excluded, even if a
 > prefix matches them.
+
+With only the passed blocks recorded (the "places that should be passed" are
+left for the consumer to derive, so the dependency analysis is skipped entirely
+and builds are faster; requires tobari v0.13.0 or later):
+
+```yaml
+      - uses: goccy/tobari-action/setup@v1
+        with:
+          passed-blocks-only: true
+```
+
+> **Note:** Every entry of `counts` in the resulting `tobari.json` carries
+> `"passedBlocksOnly": true`, and zero-count blocks are absent. `tobari html`
+> (and the `report` action) still use all instrumented blocks of the program as
+> the denominator. See the
+> [tobari README](https://github.com/goccy/tobari#recording-only-the-passed-blocks)
+> for details.
 
 With embed-code enabled:
 
@@ -95,10 +121,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.24'
+          go-version: '1.26'
       - uses: goccy/tobari-action/setup@v1
       - run: go test ./...
       - uses: goccy/tobari-action/report@v1
