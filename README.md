@@ -16,6 +16,9 @@ Installs the tobari CLI and configures `GOFLAGS` for coverage-instrumented build
 | `embed-code` | Embed source code into instrumented binaries | `false` |
 | `tags` | Build tags (same as `go build -tags`). Multiple tags can be specified with newlines or commas. | |
 | `exclude-analysis` | Package path prefixes to exclude from the dependency analysis. Multiple prefixes can be specified with newlines or commas. | |
+| `passed-blocks-only` | Record only the blocks that were actually passed and skip the dependency analysis (tobari v0.13.0 or later) | `false` |
+
+> **Note:** `exclude-analysis` and `passed-blocks-only` are mutually exclusive. Specify at most one.
 
 #### Usage
 
@@ -58,6 +61,23 @@ that slows down the analysis):
 > **Note:** Only exclude packages that never call back into a coverage-target
 > package. Coverage targets and the main package are never excluded, even if a
 > prefix matches them.
+
+With only the passed blocks recorded (the "places that should be passed" are
+left for the consumer to derive, so the dependency analysis is skipped entirely
+and builds are faster; requires tobari v0.13.0 or later):
+
+```yaml
+      - uses: goccy/tobari-action/setup@v1
+        with:
+          passed-blocks-only: true
+```
+
+> **Note:** Every entry of `counts` in the resulting `tobari.json` carries
+> `"passedBlocksOnly": true`, and zero-count blocks are absent. `tobari html`
+> (and the `report` action) still use all instrumented blocks of the program as
+> the denominator. See the
+> [tobari README](https://github.com/goccy/tobari#recording-only-the-passed-blocks)
+> for details.
 
 With embed-code enabled:
 

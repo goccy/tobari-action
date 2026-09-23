@@ -112,6 +112,53 @@ jobs:
             exit 1
           fi
 
+  test-setup-passed-blocks-only:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - uses: ./setup
+        with:
+          passed-blocks-only: 'true'
+      - name: Verify GOFLAGS with passed-blocks-only
+        run: |
+          echo "GOFLAGS=${GOFLAGS}"
+          if [[ "${GOFLAGS}" != *"-cover"* ]]; then
+            echo "::error::GOFLAGS does not contain -cover"
+            exit 1
+          fi
+          if [[ "${GOFLAGS}" != *"--passed-blocks-only"* ]]; then
+            echo "::error::GOFLAGS does not contain --passed-blocks-only"
+            exit 1
+          fi
+
+  test-setup-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Test both passed-blocks-only and exclude-analysis fails
+        id: both-inputs
+        uses: ./setup
+        continue-on-error: true
+        with:
+          passed-blocks-only: 'true'
+          exclude-analysis: github.com/org/repo
+      - name: Verify failure
+        run: |
+          if [ "${{ steps.both-inputs.outcome }}" != "failure" ]; then
+            echo "::error::Expected failure when both passed-blocks-only and exclude-analysis are specified"
+            exit 1
+          fi
+          echo "Validation correctly rejected mutually exclusive inputs"
+
   test-report:
     strategy:
       matrix:
