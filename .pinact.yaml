@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/pinact/refs/heads/main/json-schema/pinact.json
+# pinact - https://github.com/suzuki-shunsuke/pinact
+version: 3
+files:
+  - pattern: .github/workflows/*.yml
+  - pattern: "*/action.yml"
+  - pattern: README.md
+
+ignore_actions:
+  # The README documents how to consume this action; keep the major version
+  # tag there so the examples always resolve to the latest release.
+  - name: goccy/tobari-action/.*
+    ref: v\d+
