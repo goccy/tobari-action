@@ -8,6 +8,12 @@ GitHub Action for [tobari](https://github.com/goccy/tobari) - a scoped coverage 
 
 Installs the tobari CLI and configures `GOFLAGS` for coverage-instrumented builds.
 
+> **Note:** The Go toolchain used for the build must satisfy the `go` directive
+> of the installed tobari release, because tobari compiles its runtime package
+> with the same toolchain as your project. tobari v0.13.0 and later require Go
+> 1.26 or later; v0.12.x requires Go 1.24 or later. Pin `version` if you need
+> to stay on an older Go release.
+
 #### Inputs
 
 | Name | Description | Default |
@@ -30,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.26'
       - uses: goccy/tobari-action/setup@v1
       - run: go build ./...
         # GOFLAGS is automatically set, so go build runs with coverage instrumentation
@@ -118,7 +124,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.26'
       - uses: goccy/tobari-action/setup@v1
       - run: go test ./...
       - uses: goccy/tobari-action/report@v1
